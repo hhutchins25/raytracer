@@ -26,11 +26,11 @@ function rayTracer(width, height, fov, near, far, mode) {
 	let xPos = [];
 	let yPos = [];
 	for (let i = 1; i <= width; i++) {
-		let currFov = (fovInc *  i) + (fov / 2);
+		let currFov = (fovInc *  i) - (fov / 2);
 		let htan = Math.tan(currFov * (Math.PI / 180));
 		xPos.push(htan * near);
 	} for (let i = 1; i <= height; i++) {
-		let currVFov = (vfovInc *  i) + (vfov / 2);
+		let currVFov = (vfovInc *  i) - (vfov / 2);
 		let vtan = Math.tan(currVFov * (Math.PI / 180));
 		yPos.push(vtan * near);
 	}
