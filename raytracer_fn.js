@@ -26,6 +26,11 @@ function Light(posVec, color, intensity) {
 	this.intensity = intensity;
 }
 
+function AmbientLight(posVec, color, intensity) {
+	Light.call(this, posVec, color, intensity);
+	lightObjects.push(this);
+}
+
 function DirectionalLight(posVec, color, intensity, dirVec) {
 	Light.call(this, posVec, color, intensity);
 	this.dirVec = dirVec;
@@ -90,10 +95,14 @@ function rayCheck(dirVec) {
 		let point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
 		// Check for valid solutions and return the closest
 		if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
-			allIntrscts.push(new Intersection(obj, Math.min(quad1, quad2)));
-		} else if (!Number.isNaN(quad1)) { 
+			if (0 < quad1 < quad2) {
+				allIntrscts.push(new Intersection(obj, point1));
+			} else if (quad2 > 0) {
+				allIntrscts.push(new Intersection(obj, point2));
+			}
+		} else if (!Number.isNaN(quad1) && quad1 > 0) { 
 			allIntrscts.push(new Intersection(obj, point1));
-		} else if (!Number.isNaN(quad2)) {
+		} else if (!Number.isNaN(quad2) && quad2 > 0) {
 			allIntrscts.push(new Intersection(obj, point2));
 		}
 	});
@@ -129,7 +138,11 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 	} else if (mode === "lighting") {
 		let mult = 0;
 		lightObjects.forEach((light) => {
-			mult += lightPixel(light.dirVec, light.intensity, obj, intrsctPos);
+			if (light instanceof DirectionalLight) {
+				mult += lightPixel(light.dirVec, light.intensity, obj, intrsctPos);
+			} else {
+				mult += light.intensity;
+			}
 		})
 		color = rgb2hex(obj.color.map(val => val * mult));
 	}
@@ -139,8 +152,9 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 
 function rgb2hex (rgb) { 
 	str = "#";
-	let hex = rgb.forEach((val) => {
-		currHex = Number(val).toString(16);
+	rgb.forEach((val) => {
+		num = Math.round(val);
+		currHex = Number(num).toString(16);
 		if (currHex.length < 2) {
 			currHex = "0" + currHex;
 	   	}
@@ -150,12 +164,16 @@ function rgb2hex (rgb) {
 }
 
 function lightPixel(lightDir, intensity, obj, intrsctPos) {
-	let normalVec = (intrsctPos - obj.pos);
-	let directLight = normalVec.reduce((total, val, idx) => total + ((val / obj.radius) * lightDir[idx]));
-	if (directLight < 0) {
+	let objPos = [obj.x, obj.y, obj.z];
+	let normalVec = intrsctPos.map((val, idx) => (val - objPos[idx]) / obj.radius);
+	let dotProd = 0;
+	let directLight = normalVec.forEach((val, idx) => {
+		dotProd = dotProd + (val * lightDir[idx]);
+	});
+	if (dotProd < 0) {
 		return 0;
 	} else {
-		return (directLight * intensity);
+		return (dotProd * intensity);
 	}
 }
 
@@ -167,6 +185,8 @@ var sphere2 = new Sphere(vec, 1000, [255,255,0]);
 var vec = [-2000, -600, 10000];
 var sphere3 = new Sphere(vec, 1000, [0,255,255]);
 var vec = [1000, -300, 5000];
-var sphere4 = new Sphere(vec, 1000, [120,150,20]);
-var light1 = new DirectionalLight([0,0,0], [0,0,0], 1, [1,0,0]);
-rayTracer(canvas.width, canvas.height, 30, 1000, 100000, "color");
+var sphere4 = new Sphere(vec, 1000, [150,240,20]);
+var dirLight1 = new DirectionalLight([0,0,0], [0,0,0], 0.3, [0,.707,.707,0]);
+var dirLight1 = new DirectionalLight([0,0,0], [0,0,0], 0.1, [0.707,0,0.707]);
+var ambLight1 = new AmbientLight([0,0,0], [0,0,0], 0.1);
+rayTracer(canvas.width, canvas.height, 30, 1000, 100000, "lighting");
