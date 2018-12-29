@@ -6,14 +6,15 @@ function Intersection(obj, pos) {
 	this.pos = pos;
 }
 
-function WorldObject(posVec) {
+function WorldObject(posVec, color) {
 	this.x = posVec[0];
 	this.y = posVec[1];
 	this.z = posVec[2];
+	this.color = color;
 }
 
-function Sphere(posVec, radius) {
-	WorldObject.call(this, posVec);
+function Sphere(posVec, radius, color) {
+	WorldObject.call(this, posVec, color);
 	this.radius = radius;
 	worldObjects.push(this);
 }
@@ -21,7 +22,7 @@ function Sphere(posVec, radius) {
 function rayTracer(width, height, fov, near, far, mode) {
 	console.log('start raytracer...');
 	let vfov = (height / width) * fov;
-	let fovInc = 90 / width;
+	let fovInc = fov / width;
 	let vfovInc = vfov / height;
 	let xPos = [];
 	let yPos = [];
@@ -34,6 +35,7 @@ function rayTracer(width, height, fov, near, far, mode) {
 		let vtan = Math.tan(currVFov * (Math.PI / 180));
 		yPos.push(vtan * near);
 	}
+	console.log(xPos);
 	console.log(xPos);
 	let incX = 0;
 	xPos.forEach((x) => {
@@ -90,7 +92,7 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 	if (obj === null || intrsctPos === null) {
 		color = "#000000";
 	} else if (mode === "bool") {
-		color = "#FFFF00";
+		color = "#FFFFFF";
 	} else if (mode === "color") {
 		color = obj.color;
 	}
@@ -99,5 +101,9 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 }
 
 var vec = [0, 0, 25000];
-var sphere1 = new Sphere(vec, 1000);
-document.getElementById("initRaytracer").onclick = rayTracer(canvas.width, canvas.height, 90, 100, 100000, "bool");
+var sphere1 = new Sphere(vec, 1000, "#FF0000");
+var vec = [4000, 1200, 12000];
+var sphere2 = new Sphere(vec, 1000, "#FFFF00");
+var vec = [-4000, -1200, 8000];
+var sphere3 = new Sphere(vec, 1000, "#00FFFF");
+document.getElementById("initRaytracer").onclick = rayTracer(canvas.width, canvas.height, 65, 1000, 100000, "color");
