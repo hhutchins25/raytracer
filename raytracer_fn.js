@@ -1,4 +1,6 @@
+// Track created objects with global variable
 var worldObjects = [];
+var lightObjects = [];
 var canvas = document.getElementById("raytracerCanvas");
 
 function Intersection(obj, pos) {
@@ -19,49 +21,74 @@ function Sphere(posVec, radius, color) {
 	worldObjects.push(this);
 }
 
+function Light(posVec, color, intensity) {
+	WorldObject.call(this, posVec, color);
+	this.intensity = intensity;
+}
+
+function DirectionalLight(posVec, color, intensity, dirVec) {
+	Light.call(this, posVec, color, intensity);
+	this.dirVec = dirVec;
+	lightObjects.push(this); 
+}
+
+// Main function, initiates all functions
 function rayTracer(width, height, fov, near, far, mode) {
 	console.log('start raytracer...');
+	// Establish the FOV for horizonal and vertical view
 	let vfov = (height / width) * fov;
 	let fovInc = fov / width;
 	let vfovInc = vfov / height;
 	let xPos = [];
 	let yPos = [];
+	// Per-pixel pos/vector horizontally
 	for (let i = 1; i <= width; i++) {
 		let currFov = (fovInc *  i) - (fov / 2);
 		let htan = Math.tan(currFov * (Math.PI / 180));
 		xPos.push(htan * near);
+	// Per-pixel pos/vector vertically
 	} for (let i = 1; i <= height; i++) {
 		let currVFov = (vfovInc *  i) - (vfov / 2);
 		let vtan = Math.tan(currVFov * (Math.PI / 180));
 		yPos.push(vtan * near);
 	}
-	console.log(xPos);
-	console.log(xPos);
+	// With values gathered, loop through each pixel and
+	// check for the intersection
 	let incX = 0;
 	xPos.forEach((x) => {
 		incX += 1;
 		let incY = 0;
 		yPos.forEach((y) => {
 			incY += 1;
-			result = rayCheck([x, y, near]);
+			let result = rayCheck([x, y, near]);
 			drawPixel([incX, incY], mode, result.obj, result.pos);
 		});
 	});
 	console.log('finish raytracer!');
 }
 
+// Used for per-pixel intersection checks
 function rayCheck(dirVec) {
 	allIntrscts = [];
 	worldObjects.forEach((obj) => {
+		// Combine obj axes for easier mapping
 		let objPos = [obj.x, obj.y, obj.z];
+		// Adjust rayPos to simulate the sphere being placed at [0,0,0]
 		let rayPos = dirVec.map((val, idx) => val - objPos[idx]);
-		a = Math.pow(dirVec[0], 2) + Math.pow(dirVec[1], 2) + Math.pow(dirVec[2], 2);
-		b = 2 * ((rayPos[0] * dirVec[0]) + (rayPos[1] * dirVec[1]) + (rayPos[2] * dirVec[2]));
-		c = Math.pow(rayPos[0], 2) + Math.pow(rayPos[1], 2) + Math.pow(rayPos[2], 2) - Math.pow(obj.radius, 2);
-		quad1 = ((-1 * b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-		quad2 = ((-1 * b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-		point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
-		point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
+		// Collect a, b, and c for quadratic formula
+		// a = dirVec • dirVec
+		// b = 2 * (dirVec • rayPos)
+		// c = rayPos • dirVec - obj.radius(squared)
+		let a = Math.pow(dirVec[0], 2) + Math.pow(dirVec[1], 2) + Math.pow(dirVec[2], 2);
+		let b = 2 * ((rayPos[0] * dirVec[0]) + (rayPos[1] * dirVec[1]) + (rayPos[2] * dirVec[2]));
+		let c = Math.pow(rayPos[0], 2) + Math.pow(rayPos[1], 2) + Math.pow(rayPos[2], 2) - Math.pow(obj.radius, 2);
+		// Collect both possible solutions for sphere intersection
+		let quad1 = ((-1 * b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+		let quad2 = ((-1 * b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
+		// Collect resulting intersection positions
+		let point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
+		let point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
+		// Check for valid solutions and return the closest
 		if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
 			allIntrscts.push(new Intersection(obj, Math.min(quad1, quad2)));
 		} else if (!Number.isNaN(quad1)) { 
@@ -73,6 +100,8 @@ function rayCheck(dirVec) {
 	return closestToOrigin(allIntrscts);
 }
 
+// Loop through all intersections and return the 
+// closest to the camera
 function closestToOrigin(intersections) {
 	let minVal = Infinity;
 	let minIntrsct = new Intersection(null, null);
@@ -86,6 +115,8 @@ function closestToOrigin(intersections) {
 	return minIntrsct;
 }
 
+// Determines how a pixel should be colored based 
+// on the informations gathered and given
 function drawPixel(pos, mode, obj, intrsctPos) {
 	let color;
 	let ctx = canvas.getContext("2d");
@@ -94,16 +125,48 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 	} else if (mode === "bool") {
 		color = "#FFFFFF";
 	} else if (mode === "color") {
-		color = obj.color;
+		color = rgb2hex(obj.color);
+	} else if (mode === "lighting") {
+		let mult = 0;
+		lightObjects.forEach((light) => {
+			mult += lightPixel(light.dirVec, light.intensity, obj, intrsctPos);
+		})
+		color = rgb2hex(obj.color.map(val => val * mult));
 	}
 	ctx.fillStyle = color;
 	ctx.fillRect(pos[0], pos[1], 1, 1);
 }
 
+function rgb2hex (rgb) { 
+	str = "#";
+	let hex = rgb.forEach((val) => {
+		currHex = Number(val).toString(16);
+		if (currHex.length < 2) {
+			currHex = "0" + currHex;
+	   	}
+		str += currHex;
+	});
+	return (str);
+}
+
+function lightPixel(lightDir, intensity, obj, intrsctPos) {
+	let normalVec = (intrsctPos - obj.pos);
+	let directLight = normalVec.reduce((total, val, idx) => total + ((val / obj.radius) * lightDir[idx]));
+	if (directLight < 0) {
+		return 0;
+	} else {
+		return (directLight * intensity);
+	}
+}
+
+// Dev testing values
 var vec = [0, 0, 25000];
-var sphere1 = new Sphere(vec, 1000, "#FF0000");
-var vec = [4000, 1200, 12000];
-var sphere2 = new Sphere(vec, 1000, "#FFFF00");
-var vec = [-4000, -1200, 8000];
-var sphere3 = new Sphere(vec, 1000, "#00FFFF");
-document.getElementById("initRaytracer").onclick = rayTracer(canvas.width, canvas.height, 65, 1000, 100000, "color");
+var sphere1 = new Sphere(vec, 1000, [255,0,0]);
+var vec = [2000, 2800, 15000];
+var sphere2 = new Sphere(vec, 1000, [255,255,0]);
+var vec = [-2000, -600, 10000];
+var sphere3 = new Sphere(vec, 1000, [0,255,255]);
+var vec = [1000, -300, 5000];
+var sphere4 = new Sphere(vec, 1000, [120,150,20]);
+var light1 = new DirectionalLight([0,0,0], [0,0,0], 1, [1,0,0]);
+rayTracer(canvas.width, canvas.height, 30, 1000, 100000, "color");
