@@ -7,7 +7,6 @@ function Intersection(obj, pos) {
 }
 
 function WorldObject(posVec) {
-	console.log(posVec);
 	this.x = posVec[0];
 	this.y = posVec[1];
 	this.z = posVec[2];
@@ -36,7 +35,6 @@ function rayTracer(width, height, fov, near, far, mode) {
 		yPos.push(vtan * near);
 	}
 	console.log(xPos);
-	console.log(yPos)
 	let incX = 0;
 	xPos.forEach((x) => {
 		incX += 1;
@@ -47,46 +45,39 @@ function rayTracer(width, height, fov, near, far, mode) {
 			drawPixel([incX, incY], mode, result.obj, result.pos);
 		});
 	});
-	console.log('finished!');
+	console.log('finish raytracer!');
 }
 
 function rayCheck(dirVec) {
 	allIntrscts = [];
 	worldObjects.forEach((obj) => {
-		let rayPos = [(dirVec[0] - obj.x), (dirVec[1] - obj.y), (dirVec[2] - obj.z)];
-		console.log(rayPos);
-		console.log(dirVec);
-		console.log(obj.radius);
+		let objPos = [obj.x, obj.y, obj.z];
+		let rayPos = dirVec.map((val, idx) => val - objPos[idx]);
 		a = Math.pow(dirVec[0], 2) + Math.pow(dirVec[1], 2) + Math.pow(dirVec[2], 2);
-		console.log("a is " + String(a))
-		b = (rayPos[0] * dirVec[0]) + (rayPos[1] * dirVec[1]) + (rayPos[2] + dirVec[2]);
-		console.log("b is " + String(b))
+		b = 2 * ((rayPos[0] * dirVec[0]) + (rayPos[1] * dirVec[1]) + (rayPos[2] * dirVec[2]));
 		c = Math.pow(rayPos[0], 2) + Math.pow(rayPos[1], 2) + Math.pow(rayPos[2], 2) - Math.pow(obj.radius, 2);
-		console.log("c is " + String(c))
 		quad1 = ((-1 * b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
 		quad2 = ((-1 * b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
-		console.log(quad1);
-		console.log(quad2);
-		if (quad1 !== null && quad2 !== null) {
+		point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
+		point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
+		if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
 			allIntrscts.push(new Intersection(obj, Math.min(quad1, quad2)));
-		} else if (quad2) { 
-			allIntrscts.push(new Intersection(obj, quad2));
-		} else if (quad1) {
-			allIntrscts.push(new Intersection(obj, quad1));
+		} else if (!Number.isNaN(quad1)) { 
+			allIntrscts.push(new Intersection(obj, point1));
+		} else if (!Number.isNaN(quad2)) {
+			allIntrscts.push(new Intersection(obj, point2));
 		}
 	});
 	return closestToOrigin(allIntrscts);
 }
 
 function closestToOrigin(intersections) {
-	console.log("begin checking intrscts...")
 	let minVal = Infinity;
 	let minIntrsct = new Intersection(null, null);
 	intersections.forEach((intrsct) => {
-		dist = Math.pow(intrsct.x, 2) + Math.pow(intrsct.y, 2) + Math.pow(intrsct.z, 2);
-		console.log(dist);
-		if (dist < minVal) { 
-			minVal = dist;
+		let pointDist = Math.pow(intrsct.obj.x, 2) + Math.pow(intrsct.obj.y, 2) + Math.pow(intrsct.obj.z, 2);
+		if (pointDist < minVal) { 
+			minVal = pointDist;
 			minIntrsct = intrsct;
 		}
 	});
@@ -96,10 +87,10 @@ function closestToOrigin(intersections) {
 function drawPixel(pos, mode, obj, intrsctPos) {
 	let color;
 	let ctx = canvas.getContext("2d");
-	if (obj === null) {
+	if (obj === null || intrsctPos === null) {
 		color = "#000000";
 	} else if (mode === "bool") {
-		color = "#FFFFFF";
+		color = "#FFFF00";
 	} else if (mode === "color") {
 		color = obj.color;
 	}
@@ -107,8 +98,6 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 	ctx.fillRect(pos[0], pos[1], 1, 1);
 }
 
-var vec = [0, 0, 100];
-var sphere1 = new Sphere(vec, 100);
-console.log(rayCheck([0,0,1]))
-console.log(worldObjects);
-// document.getElementById("initRaytracer").onclick = rayTracer(canvas.width, canvas.height, 90, 1000, 100000, "bool");
+var vec = [0, 0, 25000];
+var sphere1 = new Sphere(vec, 1000);
+document.getElementById("initRaytracer").onclick = rayTracer(canvas.width, canvas.height, 90, 100, 100000, "bool");
