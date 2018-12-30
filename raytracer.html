@@ -4,7 +4,12 @@
         style="border:1px solid #000000;">
         </canvas>
         <br>
-        <button type="button" id="initRaytracer">Click to start raytracing.</button>
+        <select name="Render Mode" id="modeSelect" onchange="initRaytracer()">
+            <option value="bool">Boolean</option>
+            <option value="color">Color</option>
+            <option value="lighting">Basic Lighting</option>
+            <option value="spec">Specular</option>
+        </select>
         <script src="raytracer_fn.js" type="text/javascript"></script>
     </body>
 </html>
