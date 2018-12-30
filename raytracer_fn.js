@@ -202,7 +202,7 @@ function lightPixel(lightDir, intensity, obj, intrsctPos, camRay, mode) {
 	if (lightMag < 0) {
 		return 0;
 	} else {
-		return (lightMag * intensity + Math.pow(specMult, 64));
+		return ((lightMag * intensity) + ((Math.pow(specMult, 32)) * intensity));
 	}
 }
 
@@ -214,18 +214,23 @@ function initRaytracer() {
 	// Clear the canvas
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	// Instantiate all objects
-	var vec = [0, 0, 25000];
-	var sphere1 = new Sphere(vec, 1000, [255, 0, 0]);
-	var vec = [2000, 2800, 15000];
-	var sphere2 = new Sphere(vec, 1000, [255, 255, 0]);
-	var vec = [-2000, -600, 10000];
-	var sphere3 = new Sphere(vec, 1000, [0, 255, 255]);
-	var vec = [1000, -300, 5000];
-	var sphere4 = new Sphere(vec, 1000, [150, 240, 20]);
-	var dirLight1 = new DirectionalLight([0, 0, 0], [0, 0, 0], 0.4, [0.707, 0.707, 0]);
-	var dirVecLight = normalVec([-1, 1, 1]);
-	var dirLight2 = new DirectionalLight([0, 0, 0], [0, 0, 0], 0.2, dirVecLight);
-	var ambLight1 = new AmbientLight([0, 0, 0], [0, 0, 0], 0.2);
+	sph1elems = document.getElementById("sphere1").elements;
+	var vec = [Number(sph1elems[0].value), Number(sph1elems[1].value), Number(sph1elems[2].value)];
+	var sphere1 = new Sphere(vec, Number(sph1elems[3].value), [Number(sph1elems[4].value), Number(sph1elems[5].value), Number(sph1elems[6].value)]);
+	sph2elems = document.getElementById("sphere2").elements;
+	var vec = [Number(sph2elems[0].value), Number(sph2elems[1].value), Number(sph2elems[2].value)];
+	var sphere1 = new Sphere(vec, Number(sph2elems[3].value), [Number(sph2elems[4].value), Number(sph2elems[5].value), Number(sph2elems[6].value)]);
+	sph3elems = document.getElementById("sphere3").elements;
+	var vec = [Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)];
+	var sphere1 = new Sphere(vec, Number(sph3elems[3].value), [Number(sph3elems[4].value), Number(sph3elems[5].value), Number(sph3elems[6].value)]);
+	dirLight1Elems = document.getElementById("dirLight1").elements;
+	var dirLight1Vec = normalVec([Number(dirLight1Elems[1].value), Number(dirLight1Elems[2].value), Number(dirLight1Elems[3].value)]);
+	var dirLight1 = new DirectionalLight([0, 0, 0], [0, 0, 0], Number(dirLight1Elems[0].value), dirLight1Vec);
+	dirLight2Elems = document.getElementById("dirLight2").elements;
+	var dirLight2Vec = normalVec([Number(dirLight2Elems[1].value), Number(dirLight2Elems[2].value), Number(dirLight2Elems[3].value)]);
+	var dirLight2 = new DirectionalLight([0, 0, 0], [0, 0, 0], Number(dirLight2Elems[0].value), dirLight2Vec);
+	ambLightElems = document.getElementById("ambLight").elements;
+	var ambLight1 = new AmbientLight([0, 0, 0], [0, 0, 0], Number(ambLightElems[0].value));
 	var modeSelect = document.getElementById("modeSelect");
 	var mode = modeSelect.options[modeSelect.selectedIndex].value;
 	console.log(mode);
