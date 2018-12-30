@@ -57,7 +57,8 @@ function normalVec(vec) {
 // Main function, initiates all functions
 function rayTracer(width, height, fov, near, far, mode) {
 	console.log('start raytracer...');
-	// Establish the FOV for horizonal and vertical view
+	// Establish the FOV for horizonal and vertical view 
+	// TODO - compensate for condensing around FOV border
 	let vfov = (height / width) * fov;
 	let fovInc = fov / width;
 	let vfovInc = vfov / height;
@@ -110,7 +111,8 @@ function rayCheck(dirVec) {
 		// Collect resulting intersection positions
 		let point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
 		let point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
-		// Check for valid solutions and return the closest
+		// Check for valid solutions and return the closest 
+		// TODO - V MESSY, FIX
 		if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
 			if (0 < quad1 < quad2) {
 				allIntrscts.push(new Intersection(obj, point1));
@@ -145,7 +147,6 @@ function closestToOrigin(intersections) {
 // on the informations gathered and given
 function drawPixel(pos, mode, obj, intrsctPos, camRay) {
 	let color;
-	// Clear canvas before drawing
 	if (obj === null || intrsctPos === null) {
 		color = "#000000";
 	} else if (mode === "bool") {
@@ -167,6 +168,7 @@ function drawPixel(pos, mode, obj, intrsctPos, camRay) {
 	ctx.fillRect(pos[0], pos[1], 1, 1);
 }
 
+// Convert RGB values to hex for HTML usage
 function rgb2hex(rgb) {
 	str = "#";
 	rgb.forEach((val) => {
@@ -206,7 +208,8 @@ function lightPixel(lightDir, intensity, obj, intrsctPos, camRay, mode) {
 	}
 }
 
-// Dev testing values
+// For tweaking values 
+// TODO - VERY messy code, should clean
 function initRaytracer() {
 	// Delete all previous objects
 	worldObjects = [];
