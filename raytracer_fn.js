@@ -37,6 +37,19 @@ function DirectionalLight(posVec, color, intensity, dirVec) {
 	lightObjects.push(this); 
 }
 
+function dotProd(vec1, vec2) {
+	return vec1.reduce((sum, val, idx) => {
+		return sum + (val * vec2[idx]);
+	}, 0);
+}
+
+function normalVec(vec) {
+	let vecMag = Math.sqrt(vec.reduce((sum, val) => {
+		return (sum + (Math.pow(val, 2)));
+	}, 0));
+	return vec.map(val => val / vecMag);
+}
+
 // Main function, initiates all functions
 function rayTracer(width, height, fov, near, far, mode) {
 	console.log('start raytracer...');
@@ -66,7 +79,7 @@ function rayTracer(width, height, fov, near, far, mode) {
 		yPos.forEach((y) => {
 			incY += 1;
 			let result = rayCheck([x, y, near]);
-			drawPixel([incX, incY], mode, result.obj, result.pos);
+			drawPixel([incX, incY], mode, result.obj, result.pos, [x, y, near]);
 		});
 	});
 	console.log('finish raytracer!');
@@ -84,9 +97,9 @@ function rayCheck(dirVec) {
 		// a = dirVec • dirVec
 		// b = 2 * (dirVec • rayPos)
 		// c = rayPos • dirVec - obj.radius(squared)
-		let a = Math.pow(dirVec[0], 2) + Math.pow(dirVec[1], 2) + Math.pow(dirVec[2], 2);
-		let b = 2 * ((rayPos[0] * dirVec[0]) + (rayPos[1] * dirVec[1]) + (rayPos[2] * dirVec[2]));
-		let c = Math.pow(rayPos[0], 2) + Math.pow(rayPos[1], 2) + Math.pow(rayPos[2], 2) - Math.pow(obj.radius, 2);
+		let a = dotProd(dirVec, dirVec);
+		let b = 2 * dotProd(dirVec, rayPos);
+		let c = dotProd(rayPos, rayPos) - Math.pow(obj.radius, 2);
 		// Collect both possible solutions for sphere intersection
 		let quad1 = ((-1 * b) + Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
 		let quad2 = ((-1 * b) - Math.sqrt(Math.pow(b, 2) - (4 * a * c))) / (2 * a);
@@ -126,7 +139,7 @@ function closestToOrigin(intersections) {
 
 // Determines how a pixel should be colored based 
 // on the informations gathered and given
-function drawPixel(pos, mode, obj, intrsctPos) {
+function drawPixel(pos, mode, obj, intrsctPos, camRay) {
 	let color;
 	let ctx = canvas.getContext("2d");
 	if (obj === null || intrsctPos === null) {
@@ -139,12 +152,12 @@ function drawPixel(pos, mode, obj, intrsctPos) {
 		let mult = 0;
 		lightObjects.forEach((light) => {
 			if (light instanceof DirectionalLight) {
-				mult += lightPixel(light.dirVec, light.intensity, obj, intrsctPos);
+				mult += lightPixel(light.dirVec, light.intensity, obj, intrsctPos, camRay);
 			} else {
 				mult += light.intensity;
 			}
 		})
-		color = rgb2hex(obj.color.map(val => val * mult));
+		color = rgb2hex(obj.color.map(val => Math.min(255, (val * mult))));
 	}
 	ctx.fillStyle = color;
 	ctx.fillRect(pos[0], pos[1], 1, 1);
@@ -163,17 +176,22 @@ function rgb2hex (rgb) {
 	return (str);
 }
 
-function lightPixel(lightDir, intensity, obj, intrsctPos) {
+function lightPixel(lightDir, intensity, obj, intrsctPos, camRay) {
 	let objPos = [obj.x, obj.y, obj.z];
-	let normalVec = intrsctPos.map((val, idx) => (val - objPos[idx]) / obj.radius);
-	let dotProd = 0;
-	let directLight = normalVec.forEach((val, idx) => {
-		dotProd = dotProd + (val * lightDir[idx]);
+	let objNormVec = intrsctPos.map((val, idx) => (val - objPos[idx]) / obj.radius);
+	let unitCamRay = normalVec(camRay);
+	let lightMag = dotProd(objNormVec, lightDir);
+	let incidVec = lightDir.map(val => val * -1);
+	let incidNormDot = dotProd(incidVec, objNormVec);
+	let reflVec = [0,0,0];
+	incidVec.forEach((val, idx) => {
+		reflVec[idx] = val - (2 * objNormVec[idx] * incidNormDot); 
 	});
-	if (dotProd < 0) {
+	let specMult = Math.max(0, dotProd(reflVec, unitCamRay));
+	if (lightMag < 0) {
 		return 0;
 	} else {
-		return (dotProd * intensity);
+	return (lightMag * intensity + Math.pow(specMult, 18));
 	}
 }
 
@@ -186,7 +204,6 @@ var vec = [-2000, -600, 10000];
 var sphere3 = new Sphere(vec, 1000, [0,255,255]);
 var vec = [1000, -300, 5000];
 var sphere4 = new Sphere(vec, 1000, [150,240,20]);
-var dirLight1 = new DirectionalLight([0,0,0], [0,0,0], 0.3, [0,.707,.707,0]);
-var dirLight1 = new DirectionalLight([0,0,0], [0,0,0], 0.1, [0.707,0,0.707]);
-var ambLight1 = new AmbientLight([0,0,0], [0,0,0], 0.1);
+var dirLight1 = new DirectionalLight([0,0,0], [0,0,0], 0.7, [0.707,0.707,0]);
+var ambLight1 = new AmbientLight([0,0,0], [0,0,0], 0.2);
 rayTracer(canvas.width, canvas.height, 30, 1000, 100000, "lighting");
