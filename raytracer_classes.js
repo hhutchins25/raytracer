@@ -5,15 +5,12 @@
 class WorldObject {
   constructor(pos) {
     this.pos = pos;
-    this.pos.x = pos[0];
-    this.pos.y = pos[1];
-    this.pos.z = pos[2];
   }
 }
 
 class Shape extends WorldObject {
-  constructor(posVec, color) {
-    super(posVec);
+  constructor(pos, color) {
+    super(pos);
     this.color = color;
   }
 }
@@ -21,6 +18,9 @@ class Shape extends WorldObject {
 class Vector {
   constructor(val) {
     this.val = val;
+    this.x = val[0];
+    this.y = val[1];
+    this.z = val[2];
   }
   mag() {
     return Math.sqrt(this.val.reduce((sum, val) => (sum + (val ** 2)), 0));
@@ -30,22 +30,22 @@ class Vector {
     this.val = this.val.map(val => val / vecMag);
   }
   sum(val2) {
-    return new Vector(this.val.map((val, idx) => val + val2[idx]));
+    return new Vector(this.val.map((val, idx) => val + val2.val[idx]));
   }
   diff(val2) {
-    return new Vector(this.val.map((val, idx) => val - val2[idx]));
+    return new Vector(this.val.map((val, idx) => val - val2.val[idx]));
   }
   dotProd(val2) {
-    return this.val.reduce((sum, val, idx) => sum + (val * val2[idx]), 0);
+    return this.val.reduce((sum, val, idx) => sum + (val * val2.val[idx]), 0);
   }
   multScalar(scalar) {
-    return this.val.map(val => val * -1);
+    return new Vector(this.val.map(val => val * scalar));
   }
 }
 
 class Ray extends WorldObject {
   constructor(pos, dir) {
-    this.pos = pos;
+    super(pos);
     this.dir = dir;
   }
 }
@@ -53,14 +53,14 @@ class Ray extends WorldObject {
 // Functions for instatiating objects/intersections
 class Intersection extends WorldObject {
   constructor(obj, pos) {
+    super(pos);
     this.obj = obj;
-    this.pos = pos;
   }
 }
 
 class Sphere extends Shape {
-  constructor(posVec, radius, color) {
-    super(posVec, color);
+  constructor(pos, radius, color) {
+    super(pos, color);
     this.radius = radius;
   }
 
@@ -68,58 +68,71 @@ class Sphere extends Shape {
     // Collect a, b, and c for quadratic formula
     const a = ray.dir.dotProd(ray.dir);
     const b = 2 * ray.dir.dotProd(ray.pos);
-    const c = ray.pos.dotProd(ray.pos); - (this.radius ** 2);
+    const c = ray.pos.dotProd(ray.pos) - (this.radius ** 2);
     // Collect both possible solutions for sphere intersection
     const quad1 = ((-1 * b) + Math.sqrt((b ** 2) - (4 * a * c))) / (2 * a);
     const quad2 = ((-1 * b) - Math.sqrt((b ** 2) - (4 * a * c))) / (2 * a);
+    console.log(quad1);
+    console.log(quad2);
     // Collect resulting intersection positions
-    const point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
-    const point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
-    // Check for valid solutions and return the closest
-    // TODO - V MESSY, FIX
-    if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
-      if (0 < quad1 < quad2) {
-        allIntrscts.push(new Intersection(obj, point1));
-      } else if (quad2 > 0) {
-        allIntrscts.push(new Intersection(obj, point2));
-      }
-    } else if (!Number.isNaN(quad1) && quad1 > 0) {
-      allIntrscts.push(new Intersection(obj, point1));
-    } else if (!Number.isNaN(quad2) && quad2 > 0) {
-      allIntrscts.push(new Intersection(obj, point2));
-    };
+    const point1 = this.pos.sum(ray.pos.sum(ray.dir.multScalar(quad1)))
+    const point2 = this.pos.sum(ray.pos.sum(ray.dir.multScalar(quad2)))
+    console.log(point1);
+    console.log(point2);
+    if (quad1 > quad2) {
+      if (quad1 > 0) return (new Intersection(this, point1));
+    } else if (quad2 > quad1) {
+      if (quad2 > 0) return (new Intersection(this, point2));
+    }
   }
 }
 
 // Functions for creating lights
 class Light extends WorldObject {
-  constructor(pos, color, intensity) {
-    super(pos);
+  constructor(posVec, color, intensity) {
+    super(posVec);
     this.color = color;
     this.intensity = intensity;
   }
-  lightPixel(objColor, scalar) {
-
+  lightPixel(scalar) {
+    return { scalar };
   }
 }
 
 class AmbientLight extends Light {
-  constructor(pos, color, intensity) {
-    super(pos, color, intensity);
+  constructor(posVec, color, intensity) {
+    super(posVec, color, intensity);
   }
   lightPixel(intersect) {
-    super.lightPixel(intersect.obj.color, 1);
+    return super.lightPixel(intensity);
   }
 }
 
 class DirectionalLight extends Light {
-  constructor(pos, color, intensity, dirVec) {
-    super(pos, color, intensity);
+  constructor(posVec, color, intensity, dirVec) {
+    super(posVec, color, intensity);
     this.dir = dirVec;
   }
-  lightPixel(intersect)
+  lightPixel(intersect, camRay)
   {
-    
+    let { obj, hitPos } = intersect;
+    // Calculate light intensity
+    const objNormVec = hitPos.diff(obj.pos).normalize();
+    const unitCamRay = camRay.normalize();
+    const lightMag = objNormVec.dotProd(this.dir);
+    if (lightMag < 0) {
+      return 0;
+    }
+    // Calculate specular intensity
+    let specMult = 0;
+    if (mode === 'spec') {
+      const incidVec = this.dir.multScalar(-1);
+      const incidNormDot = incidVec.dotProd(objNormVec);
+      reflVec = incidVec.diff(objNormVec.mulScalar(2 * incidNormDot))
+      specMult = Math.max(0, reflVec.dotProd(unitCamRay));
+    }
+    // Return an intensity scalar combining lighting and specular
+    return super.lightPixel((lightMag * intensity) + ((specMult ** 32) * intensity));
   }
 }
 
