@@ -1,32 +1,6 @@
-// Lights.js
-// Contains all light classes and functions
+// directional_lights.js
+// Contains class/functions/math for directional light
 // Holden Hutchins 2018
-
-class Light extends WorldObject {
-
-  constructor(posVec, color, intensity) {
-    super(posVec);
-    this.color = color;
-    this.intensity = intensity;
-  }
-
-  lightPixel(scalar) {
-    return { scalar };
-  }
-
-}
-
-class AmbientLight extends Light {
-
-  constructor(posVec, color, intensity) {
-    super(posVec, color, intensity);
-  }
-
-  lightPixel(intersect) {
-    return super.lightPixel(intensity);
-  }
-
-}
 
 class DirectionalLight extends Light {
 

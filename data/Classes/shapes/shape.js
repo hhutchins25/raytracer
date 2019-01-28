@@ -6,7 +6,6 @@ class Shape extends WorldObject {
 
   constructor(pos, material) {
     super(pos);
-    this.material = material;
   }
   
 }
