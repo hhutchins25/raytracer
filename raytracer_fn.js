@@ -1,90 +1,4 @@
-// Track created objects with global variable
-let worldObjects = [];
-let lightObjects = [];
-const canvas = document.getElementById('raytracerCanvas');
-const ctx = canvas.getContext('2d');
 
-// Functions for instatiating objects/intersections
-function Intersection(obj, pos) {
-  this.obj = obj;
-  this.pos = pos;
-}
-
-function WorldObject(posVec, color) {
-  this.x = posVec[0];
-  this.y = posVec[1];
-  this.z = posVec[2];
-  this.color = color;
-}
-
-function Sphere(posVec, radius, color) {
-  WorldObject.call(this, posVec, color);
-  this.radius = radius;
-}
-
-// Functions for creating lights
-function Light(posVec, color, intensity) {
-  WorldObject.call(this, posVec, color);
-  this.intensity = intensity;
-}
-
-function AmbientLight(posVec, color, intensity) {
-  Light.call(this, posVec, color, intensity);
-}
-
-function DirectionalLight(posVec, color, intensity, dirVec) {
-  Light.call(this, posVec, color, intensity);
-  this.dirVec = dirVec;
-}
-
-// Basic vector math
-function dotProd(vec1, vec2) {
-  return vec1.reduce((sum, val, idx) => sum + (val * vec2[idx]), 0);
-}
-
-function normalVec(vec) {
-  const vecMag = Math.sqrt(vec.reduce((sum, val) => (sum + (val ** 2)), 0));
-  return vec.map(val => val / vecMag);
-}
-
-// Convert RGB values to hex for HTML usage
-function rgb2hex(rgb) {
-  let str = '#';
-  rgb.forEach((val) => {
-    const num = Math.round(val);
-    let currHex = Number(num).toString(16);
-    if (currHex.length < 2) {
-      currHex = `0${currHex}`;
-    }
-    str += currHex;
-  });
-  return (str);
-}
-
-// Determines light intensity per pixel
-function lightPixel(lightDir, intensity, obj, intrsctPos, camRay, mode) {
-  // Calculate light intensity
-  const objPos = [obj.x, obj.y, obj.z];
-  const objNormVec = intrsctPos.map((val, idx) => (val - objPos[idx]) / obj.radius);
-  const unitCamRay = normalVec(camRay);
-  const lightMag = dotProd(objNormVec, lightDir);
-  // Calculate specular intensity
-  let specMult = 0;
-  if (mode === 'spec') {
-    const incidVec = lightDir.map(val => val * -1);
-    const incidNormDot = dotProd(incidVec, objNormVec);
-    const reflVec = [0, 0, 0];
-    incidVec.forEach((val, idx) => {
-      reflVec[idx] = val - (2 * objNormVec[idx] * incidNormDot);
-    });
-    specMult = Math.max(0, dotProd(reflVec, unitCamRay));
-  }
-  // Return an intensity scalar combining lighting and specular
-  if (lightMag < 0) {
-    return 0;
-  }
-  return ((lightMag * intensity) + ((specMult ** 32) * intensity));
-}
 
 // Determines how a pixel should be colored based
 // on the informations gathered and given
@@ -140,6 +54,7 @@ function rayTracer(width, height, fov, near, far, mode) {
     let incY = 0;
     yPos.forEach((y) => {
       incY += 1;
+      let intersections = 
       const result = rayCheck([x, y, near]);
       drawPixel([incX, incY], mode, result.obj, result.pos, [x, y, near]);
     });
@@ -160,44 +75,6 @@ function closestToOrigin(intersections) {
     }
   });
   return minIntrsct;
-}
-
-// Used for per-pixel intersection checks
-function rayCheck(dirVec) {
-  const allIntrscts = [];
-  worldObjects.forEach((obj) => {
-    // Combine obj axes for easier mapping
-    const objPos = [obj.x, obj.y, obj.z];
-    // Adjust rayPos to simulate the sphere being placed at [0,0,0]
-    const rayPos = dirVec.map((val, idx) => val - objPos[idx]);
-    // Collect a, b, and c for quadratic formula
-    // a = dirVec • dirVec
-    // b = 2 * (dirVec • rayPos)
-    // c = rayPos • dirVec - obj.radius(squared)
-    const a = dotProd(dirVec, dirVec);
-    const b = 2 * dotProd(dirVec, rayPos);
-    const c = dotProd(rayPos, rayPos) - (obj.radius ** 2);
-    // Collect both possible solutions for sphere intersection
-    const quad1 = ((-1 * b) + Math.sqrt((b ** 2) - (4 * a * c))) / (2 * a);
-    const quad2 = ((-1 * b) - Math.sqrt((b ** 2) - (4 * a * c))) / (2 * a);
-    // Collect resulting intersection positions
-    const point1 = rayPos.map((val, idx) => val + (quad1 * dirVec[idx]) + objPos[idx]);
-    const point2 = rayPos.map((val, idx) => val + (quad2 * dirVec[idx]) + objPos[idx]);
-    // Check for valid solutions and return the closest
-    // TODO - V MESSY, FIX
-    if (!Number.isNaN(quad1) && !Number.isNaN(quad2)) {
-      if (0 < quad1 < quad2) {
-        allIntrscts.push(new Intersection(obj, point1));
-      } else if (quad2 > 0) {
-        allIntrscts.push(new Intersection(obj, point2));
-      }
-    } else if (!Number.isNaN(quad1) && quad1 > 0) {
-      allIntrscts.push(new Intersection(obj, point1));
-    } else if (!Number.isNaN(quad2) && quad2 > 0) {
-      allIntrscts.push(new Intersection(obj, point2));
-    }
-  });
-  return closestToOrigin(allIntrscts);
 }
 
 // For tweaking values
@@ -239,7 +116,7 @@ function initRaytracer() {
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
   // Initialize raytracing process
-  rayTracer(canvas.width, canvas.height, 30, 1000, 100000, mode);
+  rayTracer(canvas.width, canvas.height, 30, 1000, 100000, mode, worldObject, lightObjects);
 }
 
 initRaytracer();
