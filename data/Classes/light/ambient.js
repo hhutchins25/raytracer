@@ -1,4 +1,4 @@
-// ambient_light.js
+// ambient.js
 // Contains ambient light class/functions/math
 // Holden Hutchins 2018
 
