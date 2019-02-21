@@ -28,7 +28,6 @@ class RayTracer {
     // With values gathered, loop through each pixel and
     // check for the intersection
     const pixelPos = this._calcPlanePositions();
-    console.log(pixelPos);
     const { xPos, yPos } = pixelPos;
     this._loopThroughPixels(xPos, yPos);
     console.log('finish raytracer!');
@@ -56,23 +55,24 @@ class RayTracer {
   }
   // Loops through each pixel and draws for the closest intersection
   _loopThroughPixels(xPos, yPos) {
-    console.log('looping...');
+    let startTime = Date.now() / 1000;
     let incX = 0;
     xPos.forEach((x) => {
       incX += 1;
       let incY = 0;
       yPos.forEach((y) => {
-        let camVec = new Vector3([x, y, this.near]);
         incY += 1;
+        let camVec = new Vector3([x, y, this.near]);
         let intersections = [];
         this.worldObjects.forEach((obj) => {
-          let rayCheck = obj.rayCheck(new Ray(this.camPos, camVec))
-          if (rayCheck !== undefined) { intersections.push(rayCheck); } 
+          intersections.push(obj.rayCheck(new Ray(this.camPos, camVec)));
         })
         const result = Intersection.closestToOrigin(intersections);
-        if (intersections !== []) { this._drawPixel([incX, incY], this.mode, result, camVec); }
+        this._drawPixel([incX, incY], this.mode, result, camVec);
       });
     });
+    let endTime = Date.now() / 1000;
+    console.log(endTime - startTime);
   }
   // Used for looping through each pixel of canvas and draw
   // resulting collisions 
@@ -133,14 +133,11 @@ class Sphere extends Shape {
     const c = rayPos.dotProd(rayPos) - (this.radius ** 2); 
     // Collect both possible solutions for sphere intersection
     let { quad1, quad2 } = GenAlg.findRoots(a, b, c);
-    // Collect resulting intersection positions
-    const point1 = this.pos.sum(ray.pos.sum(ray.dir.multScalar(quad1)));
-    const point2 = this.pos.sum(ray.pos.sum(ray.dir.multScalar(quad2)));
     // Return the closest values
     if (quad1 > quad2) {
-      if (quad1 > 0) return (new Intersection(this, point1, ray));
+      if (quad1 > 0) return (new Intersection(this, this.pos.sum(ray.dir.multScalar(quad1)).sum(ray.pos), ray));
     } else if (quad2 > quad1) {
-      if (quad2 > 0) return (new Intersection(this, point2, ray));
+      if (quad2 > 0) return (new Intersection(this, this.pos.sum(ray.dir.multScalar(quad2)).sum(ray.pos), ray));
     } 
     return undefined;
   }
