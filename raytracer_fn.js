@@ -86,10 +86,10 @@ class RayTracer {
       color = collision.obj.color.convertToHex();
     } else if (mode === 'lighting' || mode === 'spec') {
       let mult = 0;
-      this.lightObjects.forEach((light) => {
-        mult += light.lightPixel(collision, camRay, this.mode);
+      this.lightObjects.forEach((currLight) => {
+        mult += currLight.lightPixel(collision, camRay, this.mode);
       });
-      color = new RGBColor(collision.obj.color.val.map(val => Math.min(255, (val * mult)))).convertToHex();
+      color = (collision.obj.color.multScalar(mult)).convertToHex();
     }
     ctx.fillStyle = color;
     ctx.fillRect(pos[0], pos[1], 1, 1);
@@ -99,7 +99,6 @@ class RayTracer {
 // All objects with a physical position in the world extend
 // from this object and its children
 class WorldObject {
-  // pos : Vector3
   constructor(pos) {
     this.pos = pos;
   }
@@ -135,11 +134,14 @@ class Sphere extends Shape {
     let { quad1, quad2 } = GenAlg.findRoots(a, b, c);
     // Return the closest values
     if (quad1 > quad2) {
-      if (quad1 > 0) return (new Intersection(this, this.pos.sum(ray.dir.multScalar(quad1)).sum(ray.pos), ray));
+      if (quad2 > 0) return (new Intersection(this, (ray.pos.sum(ray.dir.multScalar(quad2))), ray));
     } else if (quad2 > quad1) {
-      if (quad2 > 0) return (new Intersection(this, this.pos.sum(ray.dir.multScalar(quad2)).sum(ray.pos), ray));
+      if (quad1 > 0) return (new Intersection(this, (ray.pos.sum(ray.dir.multScalar(quad1))), ray));
     } 
     return undefined;
+  }
+  getNormalFromPoint(point) {
+    return (point.diff(this.pos)).normalize();
   }
 }
 
@@ -191,7 +193,7 @@ class Intersection extends WorldObject {
     let minIntrsct = new Intersection(null, null);
     intersections.forEach((intrsct) => {
       if (intrsct === undefined) { return undefined; }
-      const pointDist = (intrsct.obj.pos.x ** 2) + (intrsct.obj.pos.y ** 2) + (intrsct.obj.pos.z ** 2);
+      const pointDist = (intrsct.pos.x ** 2) + (intrsct.pos.y ** 2) + (intrsct.pos.z ** 2);
       if (pointDist < minVal) {
         minVal = pointDist;
         minIntrsct = intrsct;
@@ -216,7 +218,7 @@ class Light extends WorldObject {
   }
   // Returns scalar used for per-pixel lighting
   lightPixel(scalar) {
-    return { scalar };
+    return scalar;
   }
 }
 
@@ -225,38 +227,37 @@ class AmbientLight extends Light {
   constructor(posVec, color, intensity) {
     super(posVec, color, intensity);
   }
-  lightPixel(intersect, camRay) {
+  lightPixel(intersect, camRay, mode) {
     return super.lightPixel(this.intensity);
   }
 }
 
 // Directed light with no falloff, differs with modes
 class DirectionalLight extends Light {
-  // dirVec : Vector3
   constructor(posVec, color, intensity, dirVec) {
     super(posVec, color, intensity);
-    this.dir = dirVec;
+    this.dir = dirVec.normalize();
   }
   lightPixel(intersect, camRay, mode)
   {
     let { obj, pos } = intersect;
     // Calculate light intensity
-    const objNormVec = pos.diff(obj.pos).normalize();
-    const unitCamRay = camRay.normalize();
+    const objNormVec = obj.getNormalFromPoint(pos);
     const lightMag = objNormVec.dotProd(this.dir);
-    if (lightMag < 0) {
-      return 0;
+    if (lightMag <= 0) {
+      return super.lightPixel(0);
     }
     // Calculate specular intensity
     let specMult = 0;
     if (mode === 'spec') {
-      const incidVec = this.dir.multScalar(-1);
+      const unitCamRay = camRay.normalize();
+      const incidVec = this.dir;
       const incidNormDot = incidVec.dotProd(objNormVec);
-      reflVec = incidVec.diff(objNormVec.mulScalar(2 * incidNormDot))
+      const reflVec = incidVec.diff(objNormVec.multScalar(2 * incidNormDot))
       specMult = Math.max(0, reflVec.dotProd(unitCamRay));
     }
     // Return an intensity scalar combining lighting and specular
-    return super.lightPixel((lightMag * this.intensity) + ((specMult ** 32) * this.intensity));
+    return super.lightPixel((lightMag * this.intensity) + ((specMult ** 64) * this.intensity));
   }
 }
 
@@ -411,7 +412,17 @@ class RGBColor {
 			str += currHex;
 		});
 		return (str);
-	}
+  }
+  multScalar(scalar) {
+    if (scalar < 0.5) {
+      const newColor = this.val.map(val => Math.min(255, (val * (scalar * 2))))
+      return new RGBColor(newColor[0], newColor[1], newColor[2]);
+    } else {
+      const rgbDiff = this.val.map(val => 255 - val);
+      const newColor = this.val.map((val, idx) => Math.min(255, (val + ((scalar - 0.5) * 2 * rgbDiff[idx]))));
+      return new RGBColor(newColor[0], newColor[1], newColor[2]);
+    }
+  }
 }
 
 /*--------------------------------------------------------------*/
@@ -426,34 +437,41 @@ function initRaytracer() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   // Instantiate all objects
   const sph1elems = document.getElementById('sphere1').elements;
-  let vec = new Vector3([Number(sph1elems[0].value), Number(sph1elems[1].value), Number(sph1elems[2].value)]);
-  const sphere1 = new Sphere(vec, Number(sph1elems[3].value), new RGBColor(Number(sph1elems[4].value),
+  let vec1 = new Vector3([Number(sph1elems[0].value), Number(sph1elems[1].value), Number(sph1elems[2].value)]);
+  const sphere1 = new Sphere(vec1, Number(sph1elems[3].value), new RGBColor(Number(sph1elems[4].value),
     Number(sph1elems[5].value), Number(sph1elems[6].value)));
   const sph2elems = document.getElementById('sphere2').elements;
-  vec = new Vector3([Number(sph2elems[0].value), Number(sph2elems[1].value), Number(sph2elems[2].value)]);
-  const sphere2 = new Sphere(vec, Number(sph2elems[3].value), new RGBColor(Number(sph2elems[4].value),
+  let vec2 = new Vector3([Number(sph2elems[0].value), Number(sph2elems[1].value), Number(sph2elems[2].value)]);
+  const sphere2 = new Sphere(vec2, Number(sph2elems[3].value), new RGBColor(Number(sph2elems[4].value),
     Number(sph2elems[5].value), Number(sph2elems[6].value)));
   const sph3elems = document.getElementById('sphere3').elements;
-  vec = new Vector3([Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)]);
-  const sphere3 = new Sphere(vec, Number(sph3elems[3].value), new RGBColor(Number(sph3elems[4].value),
+  let vec3 = new Vector3([Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)]);
+  const sphere3 = new Sphere(vec3, Number(sph3elems[3].value), new RGBColor(Number(sph3elems[4].value),
     Number(sph3elems[5].value), Number(sph3elems[6].value)));
+  
   const dirLight1Elems = document.getElementById('dirLight1').elements;
   const dirLight1Vec = new Vector3([Number(dirLight1Elems[1].value),
     Number(dirLight1Elems[2].value), Number(dirLight1Elems[3].value)]);
-  const dirLight1 = new DirectionalLight(new Vector3([0, 0, 0]), new RGBColor(0, 0, 0),
-    Number(dirLight1Elems[0].value), dirLight1Vec);
+  
   const dirLight2Elems = document.getElementById('dirLight2').elements;
   const dirLight2Vec = new Vector3([Number(dirLight2Elems[1].value),
     Number(dirLight2Elems[2].value), Number(dirLight2Elems[3].value)]);
+  
   const dirLight2 = new DirectionalLight(new Vector3([0, 0, 0]), new RGBColor(0, 0, 0),
     Number(dirLight2Elems[0].value), dirLight2Vec);
+  const dirLight1 = new DirectionalLight(new Vector3([0, 0, 0]), new RGBColor(0, 0, 0),
+    Number(dirLight1Elems[0].value), dirLight1Vec);
+
   const ambLightElems = document.getElementById('ambLight').elements;
   const ambLight = new AmbientLight(new Vector3([0, 0, 0]), new RGBColor(0, 0, 0), Number(ambLightElems[0].value));
+
   const modeSelect = document.getElementById('modeSelect');
   const mode = modeSelect.options[modeSelect.selectedIndex].value;
   worldObjects.push(sphere1, sphere2, sphere3);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
+  console.log(lightObjects);
+  console.log(worldObjects);
   // Initialize raytracing process
   const rayTracer = new RayTracer(canvas.width, canvas.height, 30, 1000, 100000, mode, worldObjects, lightObjects);
   rayTracer.init();
