@@ -1,3 +1,10 @@
+// raytracer_fn.js
+// Contains all classes and functionality for simple raytracer
+// Holden Hutchins 2018
+
+// TODO - Continue creating functionality for polygons and matrices
+
+// Global values for accessing canvas
 var canvas = document.getElementById("raytracerCanvas");
 var ctx = canvas.getContext("2d");
 
