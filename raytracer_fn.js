@@ -24,12 +24,15 @@ class RayTracer {
   // Initiates process of raytracing, 
   // mostly done in private functions
   init() { 
+    let startTime = Date.now() / 1000;
     console.log('start raytracer...');
     // With values gathered, loop through each pixel and
     // check for the intersection
     const pixelPos = this._calcPlanePositions();
     const { xPos, yPos } = pixelPos;
     this._loopThroughPixels(xPos, yPos);
+    let endTime = Date.now() / 1000;
+    console.log(endTime - startTime);
     console.log('finish raytracer!');
   }
   // Calculates x and y values for each row and column of canvas
@@ -55,7 +58,6 @@ class RayTracer {
   }
   // Loops through each pixel and draws for the closest intersection
   _loopThroughPixels(xPos, yPos) {
-    let startTime = Date.now() / 1000;
     let incX = 0;
     xPos.forEach((x) => {
       incX += 1;
@@ -71,8 +73,6 @@ class RayTracer {
         this._drawPixel([incX, incY], this.mode, result, camVec);
       });
     });
-    let endTime = Date.now() / 1000;
-    console.log(endTime - startTime);
   }
   // Used for looping through each pixel of canvas and draw
   // resulting collisions 
@@ -470,8 +470,6 @@ function initRaytracer() {
   worldObjects.push(sphere1, sphere2, sphere3);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
-  console.log(lightObjects);
-  console.log(worldObjects);
   // Initialize raytracing process
   const rayTracer = new RayTracer(canvas.width, canvas.height, 30, 1000, 100000, mode, worldObjects, lightObjects);
   rayTracer.init();
