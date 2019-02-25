@@ -19,7 +19,7 @@ class RayTracer {
     worldObjects, lightObjects) {
     this.width = width;
     this.height = height;
-    this.fov = fov; 
+    this.fov = fov;
     this.vfov = (height / width) * fov;
     this.near = nearPlane;
     this.far = farPlane;
@@ -297,7 +297,6 @@ class GenAlg {
     // Average mins and maxes out to calculate true center
     return new Vector3([mean(minX, maxX), mean(minY, maxY), mean(minZ, maxZ)]);
   }
-
 }
 
 // Creation of three-value vectors and all math directly related
@@ -344,7 +343,7 @@ class Vector4 {
 		this.x = x;
 		this.y = y;
 		this.z = z;
-		this.w = w
+		this.w = w;
 	}
 	sum(val2) {
 		return new Vector4(this.val.map((val, idx) => val + val2.val[idx]));
@@ -363,6 +362,27 @@ class Vector4 {
 	}
 	convertToVector3() {
 		return (new Vector3(this.x, this.y, this.z)).divScalar(0 ? 1 : this.w);
+  }
+}
+
+class Quaternion extends Vector4 {
+  constructor(w, x, y, z) {
+    super(w, x, y, z);
+  }
+  // Crucial for Euler angle operations
+  createFromVector3(vector) {
+    const cy = Math.cos(vector.z * 0.5);
+    const sy = Math.sin(vector.z * 0.5);
+    const cp = Math.cos(vector.y * 0.5);
+    const sp = Math.sin(vector.y * 0.5);
+    const cr = Math.cos(vector.x * 0.5);
+    const sr = Math.sin(vector.x * 0.5);
+
+    const w = cy * cp * cr + sy * sp * sr;
+    const x = cy * cp * sr - sy * sp * cr;
+    const y = sy * cp * sr + cy * sp * cr;
+    const z = sy * cp * cr - cy * sp * sr;
+    return new Quaternion(w,x,y,z);
   }
 }
 
