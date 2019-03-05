@@ -166,20 +166,17 @@ class Triangle extends Shape {
     // For intersection math
     this.v1 = vert2.diff(vert1);
     this.v2 = vert3.diff(vert1);
-    this.normal = this.calcNormal().multScalar(-1);
-    console.log(this.normal);
-    this.d = this.normal.multScalar(this.vert2.dotProd(this.normal));
-
+    this.normal = this.calcNormal();
+    console.log(this.getNormal(''));
   }
   // Returns normal of triangle (may be flipped)
   calcNormal() {
-    let ray1 = this.vert2.diff(this.vert1);
-    let ray2 = this.vert3.diff(this.vert1);
-    return (ray1.crossProd(ray2)).normalize();
+    return (this.v1.crossProd(this.v2)).normalize();
   }
   // Simply fetches the normal, mirrors other shapes
   getNormal(pos) {
-    return this.normal;
+    if (this.normal.z > 0) { return this.normal.multScalar(-1) };
+    return (this.normal);
   }
   rayCheck(ray) {
     // Use the Möller–Trumbore intersection algorithm
@@ -515,14 +512,9 @@ function initRaytracer() {
   let vec3 = new Vector3([Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)]);
   const sphere3 = new Sphere(vec3, Number(sph3elems[3].value), new RGBColor(Number(sph3elems[4].value),
     Number(sph3elems[5].value), Number(sph3elems[6].value)));
-  point1 = new Vector3([1300, 1800, 10000]);
-  point2 = new Vector3([800, 1300, 10500]);
-  point3 = new Vector3([300, 1800, 10000]);
-  const tri1 = new Triangle(point1, point2, point3, new RGBColor(128, 128, 0));
-  point1 = new Vector3([1300, 1800, 10000]);
-  point2 = new Vector3([800, 2300, 10500]);
-  point3 = new Vector3([300, 1800, 10000]);
-  const tri2 = new Triangle(point1, point2, point3, new RGBColor(128, 128, 0));
+  point2 = new Vector3([-3000, 2500, 5000]);
+  point3 = new Vector3([-30000, 3000, 30000]);
+  const tri1 = new Triangle(vec1, point2.diff(vec1), point3.diff(vec1), new RGBColor(57, 255, 20));
   
   const dirLight1Elems = document.getElementById('dirLight1').elements;
   const dirLight1Vec = new Vector3([Number(dirLight1Elems[1].value),
@@ -542,7 +534,7 @@ function initRaytracer() {
 
   const modeSelect = document.getElementById('modeSelect');
   const mode = modeSelect.options[modeSelect.selectedIndex].value;
-  worldObjects.push(sphere1, sphere2, sphere3, tri1, tri2);
+  worldObjects.push(sphere1, sphere2, sphere3, tri1);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
   // Initialize raytracing process
