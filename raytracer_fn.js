@@ -65,6 +65,7 @@ class RayTracer {
   }
   // Loops through each pixel and draws for the closest intersection
   _loopThroughPixels(xPos, yPos) {
+    console.log('checking rays...');
     let incX = 0;
     xPos.forEach((x) => {
       incX += 1;
@@ -131,6 +132,8 @@ class Sphere extends Shape {
     super(pos, color);
     this.radius = radius;
   }
+  // Checks for input ray collision and returns
+  // closest collision information
   rayCheck(ray) {
     let rayPos = ray.pos.diff(this.pos);
     // Collect a, b, and c for quadratic formula
@@ -147,7 +150,7 @@ class Sphere extends Shape {
     } 
     return undefined;
   }
-  getNormalFromPoint(point) {
+  getNormal(point) {
     return (point.diff(this.pos)).normalize();
   }
 }
@@ -161,13 +164,45 @@ class Triangle extends Shape {
     this.vert2 = vert2;
     this.vert3 = vert3;
     this.center = center;
-    this.normal = getNormal();
+    this.normal = this.calcNormal().multScalar(-1);
+    console.log(this.normal);
+    this.d = this.normal.multScalar(this.vert2.dotProd(this.normal));
+
   }
   // Returns normal of triangle (may be flipped)
-  getNormal() {
+  calcNormal() {
     let ray1 = this.vert2.diff(this.vert1);
     let ray2 = this.vert3.diff(this.vert1);
     return (ray1.crossProd(ray2)).normalize();
+  }
+  // Simply fetches the normal, mirrors other shapes
+  getNormal(pos) {
+    return this.normal;
+  }
+  rayCheck(ray) {
+    // Calculate where ray hits infinite plane
+    let compPos = ray.pos.diff(this.d);
+    let t = (-1 * (this.normal.dotProd(compPos))) / (this.normal.dotProd(ray.dir));
+    // If the point is on positive ray, continue
+    if (t >= 0) {
+      // Calculate point intersect and all dot prods
+      let planeCoord = ray.scale(t);
+      // Establish convex check lines
+      let line1 = this.vert1.diff(planeCoord).normalize();
+      let line2 = this.vert2.diff(planeCoord).normalize();
+      let line3 = this.vert3.diff(planeCoord).normalize();
+      // Collect all dot products
+      let dot1 = line1.dotProd(line2);
+      let dot2 = line1.dotProd(line3);
+      let dot3 = line2.dotProd(line3);
+      // Check all sides for convexity
+      if ((dot1 + dot2) > 0) { return undefined; }
+      if ((dot1 + dot3) > 0) { return undefined; }
+      if ((dot2 + dot3) > 0) { return undefined; }
+      // Once all tests are passed, return intersection
+      return new Intersection(this, planeCoord, ray);
+    }
+    return undefined;
   }
 }
 
@@ -184,6 +219,9 @@ class Ray extends WorldObject {
   constructor(pos, dir) {
     super(pos);
     this.dir = dir;
+  }
+  scale(t) {
+    return (this.pos.sum(this.dir.multScalar(t)));
   }
 }
 
@@ -249,7 +287,7 @@ class DirectionalLight extends Light {
   {
     let { obj, pos } = intersect;
     // Calculate light intensity
-    const objNormVec = obj.getNormalFromPoint(pos);
+    const objNormVec = obj.getNormal(pos);
     const lightMag = objNormVec.dotProd(this.dir);
     if (lightMag <= 0) {
       return super.lightPixel(0);
@@ -284,18 +322,18 @@ class GenAlg {
     return { quad1, quad2 };
   }
   static center(points) {
-    const allX = point.map(val => val.x)
-    const allY = point.map(val => val.y)
-    const allZ = point.map(val => val.z)
+    const allX = points.map(val => val.x)
+    const allY = points.map(val => val.y)
+    const allZ = points.map(val => val.z)
     // Collect mins and maxes to calculate true center
-    const minX = Math.min(allX);
-    const maxX = Math.max(allX);
-    const minY = Math.min(allY);
-    const maxY = Math.max(allY);
-    const minZ = Math.min(allZ);
-    const maxZ = Math.max(allZ);
+    const minX = Math.min(...allX);
+    const maxX = Math.max(...allX);
+    const minY = Math.min(...allY);
+    const maxY = Math.max(...allY);
+    const minZ = Math.min(...allZ);
+    const maxZ = Math.max(...allZ);
     // Average mins and maxes out to calculate true center
-    return new Vector3([mean(minX, maxX), mean(minY, maxY), mean(minZ, maxZ)]);
+    return new Vector3([this.mean([minX, maxX]), this.mean([minY, maxY]), this.mean([minZ, maxZ])]);
   }
 }
 
@@ -336,7 +374,8 @@ class Vector3 {
   }
 }
 
-// Creation of four-value vectors and all math directly related
+// Creation of four-value vectors (specifically homogeneous coordinates) 
+// and all math directly related
 class Vector4 {
 	constructor(x,y,z,w) {
 		this.val = [x,y,z,w];
@@ -475,6 +514,14 @@ function initRaytracer() {
   let vec3 = new Vector3([Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)]);
   const sphere3 = new Sphere(vec3, Number(sph3elems[3].value), new RGBColor(Number(sph3elems[4].value),
     Number(sph3elems[5].value), Number(sph3elems[6].value)));
+  point1 = new Vector3([1300, 1800, 10000]);
+  point2 = new Vector3([800, 1300, 10500]);
+  point3 = new Vector3([300, 1800, 10000]);
+  const tri1 = new Triangle(point1, point2, point3, new RGBColor(128, 128, 0));
+  point1 = new Vector3([1300, 1800, 10000]);
+  point2 = new Vector3([800, 2300, 10500]);
+  point3 = new Vector3([300, 1800, 10000]);
+  const tri2 = new Triangle(point1, point2, point3, new RGBColor(128, 128, 0));
   
   const dirLight1Elems = document.getElementById('dirLight1').elements;
   const dirLight1Vec = new Vector3([Number(dirLight1Elems[1].value),
@@ -494,7 +541,7 @@ function initRaytracer() {
 
   const modeSelect = document.getElementById('modeSelect');
   const mode = modeSelect.options[modeSelect.selectedIndex].value;
-  worldObjects.push(sphere1, sphere2, sphere3);
+  worldObjects.push(sphere1, sphere2, sphere3, tri1, tri2);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
   // Initialize raytracing process
