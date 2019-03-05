@@ -163,7 +163,9 @@ class Triangle extends Shape {
     this.vert1 = vert1;
     this.vert2 = vert2;
     this.vert3 = vert3;
-    this.center = center;
+    // For intersection math
+    this.v1 = vert2.diff(vert1);
+    this.v2 = vert3.diff(vert1);
     this.normal = this.calcNormal().multScalar(-1);
     console.log(this.normal);
     this.d = this.normal.multScalar(this.vert2.dotProd(this.normal));
@@ -180,27 +182,26 @@ class Triangle extends Shape {
     return this.normal;
   }
   rayCheck(ray) {
-    // Calculate where ray hits infinite plane
-    let compPos = ray.pos.diff(this.d);
-    let t = (-1 * (this.normal.dotProd(compPos))) / (this.normal.dotProd(ray.dir));
-    // If the point is on positive ray, continue
-    if (t >= 0) {
-      // Calculate point intersect and all dot prods
-      let planeCoord = ray.scale(t);
-      // Establish convex check lines
-      let line1 = this.vert1.diff(planeCoord).normalize();
-      let line2 = this.vert2.diff(planeCoord).normalize();
-      let line3 = this.vert3.diff(planeCoord).normalize();
-      // Collect all dot products
-      let dot1 = line1.dotProd(line2);
-      let dot2 = line1.dotProd(line3);
-      let dot3 = line2.dotProd(line3);
-      // Check all sides for convexity
-      if ((dot1 + dot2) > 0) { return undefined; }
-      if ((dot1 + dot3) > 0) { return undefined; }
-      if ((dot2 + dot3) > 0) { return undefined; }
-      // Once all tests are passed, return intersection
-      return new Intersection(this, planeCoord, ray);
+    // Use the Möller–Trumbore intersection algorithm
+    // (eons quicker than self-implemented algorithm)
+    let EPSILON = 0.0000001;
+    let h = ray.dir.crossProd(this.v2);
+    let a = this.v1.dotProd(h);
+    // Checks if ray is parallel to plane
+    if (a < -EPSILON && a > EPSILON) { return undefined; }
+    let f = 1 / a;
+    let s = ray.pos.diff(this.vert1);
+    let u = f * (s.dotProd(h));
+    // Checks if Barycentric principles are followed 
+    if (u < 0 || u > 1.0) { return undefined; }
+    let q = s.crossProd(this.v1);
+    let v = ray.dir.dotProd(q) * f;
+    // Once again checks Barycentric principles
+    if (v < 0 || u + v > 1) { return undefined; }
+    // With u and v collected, calculate ray scalar
+    let t = this.v2.dotProd(q) * f;
+    if (t > EPSILON) {
+      return new Intersection(this, ray.scale(t), ray);
     }
     return undefined;
   }
