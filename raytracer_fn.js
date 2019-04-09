@@ -2,7 +2,9 @@
 // Contains all classes and functionality for simple raytracer
 // Holden Hutchins 2018
 
-// TODO - Continue creating functionality for polygons and matrices
+// TODO 
+// - Continue creating functionality for polygons and matrices
+// - Create cube algorithm
 
 // Global values for accessing canvas
 var canvas = document.getElementById("raytracerCanvas");
@@ -281,8 +283,7 @@ class DirectionalLight extends Light {
     super(posVec, color, intensity);
     this.dir = dirVec.normalize();
   }
-  lightPixel(intersect, camRay, mode)
-  {
+  lightPixel(intersect, camRay, mode) {
     let { obj, pos } = intersect;
     // Calculate light intensity
     const objNormVec = obj.getNormal(pos);
@@ -293,14 +294,20 @@ class DirectionalLight extends Light {
     // Calculate specular intensity
     let specMult = 0;
     if (mode === 'spec') {
-      const unitCamRay = camRay.normalize();
-      const incidVec = this.dir;
-      const incidNormDot = incidVec.dotProd(objNormVec);
-      const reflVec = incidVec.diff(objNormVec.multScalar(2 * incidNormDot))
-      specMult = Math.max(0, reflVec.dotProd(unitCamRay));
+      specMult = calcSpecularity(objNormVec, camRay);
+    }
+    if (mode === 'refl') {
+
     }
     // Return an intensity scalar combining lighting and specular
     return super.lightPixel((lightMag * this.intensity) + ((specMult ** 64) * this.intensity));
+  }
+  calcSpecularity(objNormVec, camRay) {
+    const unitCamRay = camRay.normalize();
+    const incidVec = this.dir;
+    const incidNormDot = incidVec.dotProd(objNormVec);
+    const reflVec = incidVec.diff(objNormVec.multScalar(2 * incidNormDot))
+    return Math.max(0, reflVec.dotProd(unitCamRay));
   }
 }
 
@@ -512,9 +519,6 @@ function initRaytracer() {
   let vec3 = new Vector3([Number(sph3elems[0].value), Number(sph3elems[1].value), Number(sph3elems[2].value)]);
   const sphere3 = new Sphere(vec3, Number(sph3elems[3].value), new RGBColor(Number(sph3elems[4].value),
     Number(sph3elems[5].value), Number(sph3elems[6].value)));
-  point2 = new Vector3([-3000, 2500, 5000]);
-  point3 = new Vector3([-30000, 3000, 30000]);
-  const tri1 = new Triangle(vec1, point2.diff(vec1), point3.diff(vec1), new RGBColor(57, 255, 20));
   
   const dirLight1Elems = document.getElementById('dirLight1').elements;
   const dirLight1Vec = new Vector3([Number(dirLight1Elems[1].value),
@@ -534,7 +538,7 @@ function initRaytracer() {
 
   const modeSelect = document.getElementById('modeSelect');
   const mode = modeSelect.options[modeSelect.selectedIndex].value;
-  worldObjects.push(sphere1, sphere2, sphere3, tri1);
+  worldObjects.push(sphere1, sphere2, sphere3);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
   // Initialize raytracing process
