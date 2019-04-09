@@ -514,7 +514,6 @@ function initRaytracer() {
     Number(sph3elems[5].value), Number(sph3elems[6].value)));
   point2 = new Vector3([-3000, 2500, 5000]);
   point3 = new Vector3([-30000, 3000, 30000]);
-  const tri1 = new Triangle(vec1, point2.diff(vec1), point3.diff(vec1), new RGBColor(57, 255, 20));
   
   const dirLight1Elems = document.getElementById('dirLight1').elements;
   const dirLight1Vec = new Vector3([Number(dirLight1Elems[1].value),
@@ -534,7 +533,7 @@ function initRaytracer() {
 
   const modeSelect = document.getElementById('modeSelect');
   const mode = modeSelect.options[modeSelect.selectedIndex].value;
-  worldObjects.push(sphere1, sphere2, sphere3, tri1);
+  worldObjects.push(sphere1, sphere2, sphere3);
   lightObjects.push(dirLight1, dirLight2, ambLight);
   console.log(mode);
   // Initialize raytracing process
